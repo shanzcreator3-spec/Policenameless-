@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>NCPD MDT PRO</title>
+
+<style>
+body{font-family:Segoe UI;background:#0f172a;color:white;margin:0}
+header{background:#020617;padding:15px;text-align:center;border-bottom:2px solid #3b82f6}
+.container{display:flex;height:93vh}
+.sidebar{width:220px;background:#020617;padding:15px}
+.sidebar button{width:100%;margin-bottom:10px;padding:10px;background:#1e40af;border:none;color:white;border-radius:5px}
+.main{flex:1;padding:20px;overflow:auto}
+.card{background:#020617;padding:15px;margin-bottom:15px;border-radius:8px}
+input,select{width:100%;padding:8px;margin:5px 0;background:#0f172a;border:none;color:white;border-radius:5px}
+button.action{background:#2563eb;border:none;color:white;padding:8px;border-radius:5px;cursor:pointer}
+table{width:100%;border-collapse:collapse}
+td,th{border:1px solid #1e3a8a;padding:8px;text-align:center}
+.login{display:flex;justify-content:center;align-items:center;height:100vh}
+.login-box{background:#020617;padding:30px;border-radius:10px;width:300px}
+</style>
+
+<!-- FIREBASE COMPAT -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+</head>
+
+<body>
+
+<!-- LOGIN -->
+<div id="loginPage" class="login">
+<div class="login-box">
+<h2>🚓 NCPD LOGIN</h2>
+<input id="user" placeholder="Username">
+<input id="pass" type="password" placeholder="Password">
+<button class="action" onclick="login()">Login</button>
+</div>
+</div>
+
+<!-- MAIN -->
+<div id="app" style="display:none">
+
+<header>NCPD MDT SYSTEM</header>
+
+<div class="container">
+
+<div class="sidebar">
+<button onclick="show('citizen')">Citizen</button>
+<button onclick="show('arrest')">Arrest</button>
+</div>
+
+<div class="main">
+
+<!-- CITIZEN -->
+<div id="citizenPage">
+
+<div class="card">
+<h3>Add Citizen</h3>
+<input id="cname" placeholder="Name">
+<input id="cage" placeholder="Age">
+<select id="cstatus">
+<option>Clean</option>
+<option>Wanted</option>
+<option>Arrested</option>
+</select>
+<button class="action" onclick="addCitizen()">Add</button>
+</div>
+
+<div class="card">
+<h3>Citizen List</h3>
+<table>
+<tr><th>Name</th><th>Age</th><th>Status</th><th>Action</th></tr>
+<tbody id="citizenTable"></tbody>
+</table>
+</div>
+
+</div>
+
+<!-- ARREST -->
+<div id="arrestPage" style="display:none">
+
+<div class="card">
+<h3>Arrest Form</h3>
+<input id="officer" placeholder="Officer">
+<input id="badge" placeholder="Badge">
+<input id="suspect" placeholder="Suspect">
+<select id="crime">
+<option value="0,0,">Select</option>
+<option value="5,500,Theft">Theft</option>
+<option value="10,1000,Robbery">Robbery</option>
+<option value="15,1500,Assault">Assault</option>
+<option value="25,2500,Murder">Murder</option>
+</select>
+<button class="action" onclick="addCrime()">Add Charge</button>
+
+<p>Jail: <span id="jail">0</span></p>
+<p>Fine: $<span id="fine">0</span></p>
+
+<button class="action" onclick="submitArrest()">Submit</button>
+</div>
+
+<div class="card">
+<h3>Arrest History</h3>
+<table>
+<tr><th>Suspect</th><th>Officer</th><th>Jail</th><th>Fine</th><th>Action</th></tr>
+<tbody id="arrestTable"></tbody>
+</table>
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// 🔥 LOGIN
+function login(){
+let u=user.value
+let p=pass.value
+
+if(u==="NCPD" && p==="policenameless"){
+loginPage.style.display="none"
+app.style.display="block"
+renderCitizens()
+renderArrests()
+}else{
+alert("Wrong login")
+}
+}
+
+// 🔥 FIREBASE CONFIG
+const firebaseConfig = {
+  apiKey: "AIzaSyCDTUfukixVhKMvJyiqrHekHXGXkTWYkkk",
+  authDomain: "ncpd-26e4e.firebaseapp.com",
+  databaseURL: "https://ncpd-26e4e-default-rtdb.firebaseio.com",
+  projectId: "ncpd-26e4e"
+}
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// NAV
+function show(p){
+citizenPage.style.display=p==="citizen"?"block":"none"
+arrestPage.style.display=p==="arrest"?"block":"none"
+}
+
+// ==================
+// 🚓 CITIZEN SYSTEM
+// ==================
+
+function addCitizen(){
+
+let ref=db.ref("citizens").push()
+
+ref.set({
+name:cname.value,
+age:cage.value,
+status:cstatus.value
+})
+
+cname.value=""
+cage.value=""
+}
+
+function renderCitizens(){
+
+db.ref("citizens").on("value",snap=>{
+
+citizenTable.innerHTML=""
+
+snap.forEach(d=>{
+
+let c=d.val()
+let id=d.key
+
+citizenTable.innerHTML+=`
+<tr>
+<td>${c.name}</td>
+<td>${c.age}</td>
+<td>${c.status}</td>
+<td>
+<button onclick="editCitizen('${id}')">Edit</button>
+<button onclick="delCitizen('${id}')">Delete</button>
+</td>
+</tr>
+`
+
+})
+
+})
+
+}
+
+function delCitizen(id){
+db.ref("citizens/"+id).remove()
+}
+
+function editCitizen(id){
+
+let name=prompt("Name")
+let age=prompt("Age")
+let status=prompt("Status")
+
+db.ref("citizens/"+id).update({
+name,age,status
+})
+
+}
+
+// ==================
+// 🚓 ARREST SYSTEM
+// ==================
+
+let totalJail=0
+let totalFine=0
+
+function addCrime(){
+
+let data=crime.value.split(",")
+
+let jail=parseInt(data[0])
+let fine=parseInt(data[1])
+
+if(jail===0)return
+
+totalJail+=jail
+totalFine+=fine
+
+document.getElementById("jail").innerText=totalJail
+document.getElementById("fine").innerText=totalFine
+
+}
+
+function submitArrest(){
+
+if(!officer.value || !suspect.value){
+alert("Lengkapi data")
+return
+}
+
+let ref=db.ref("arrests").push()
+
+ref.set({
+officer:officer.value,
+badge:badge.value,
+suspect:suspect.value,
+jail:totalJail,
+fine:totalFine,
+time:new Date().toLocaleString()
+})
+
+// reset
+totalJail=0
+totalFine=0
+jail.innerText=0
+fine.innerText=0
+
+officer.value=""
+badge.value=""
+suspect.value=""
+
+}
+
+// HISTORY
+function renderArrests(){
+
+db.ref("arrests").on("value",snap=>{
+
+arrestTable.innerHTML=""
+
+snap.forEach(d=>{
+
+let a=d.val()
+let id=d.key
+
+arrestTable.innerHTML+=`
+<tr>
+<td>${a.suspect}</td>
+<td>${a.officer}</td>
+<td>${a.jail}</td>
+<td>$${a.fine}</td>
+<td>
+<button onclick="editArrest('${id}')">Edit</button>
+<button onclick="delArrest('${id}')">Delete</button>
+</td>
+</tr>
+`
+
+})
+
+})
+
+}
+
+function delArrest(id){
+db.ref("arrests/"+id).remove()
+}
+
+function editArrest(id){
+
+let jail=prompt("Jail")
+let fine=prompt("Fine")
+
+db.ref("arrests/"+id).update({jail,fine})
+
+}
+
+</script>
+
+</body>
+</html>
